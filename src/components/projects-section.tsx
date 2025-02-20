@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface GitHubRepo {
   id: number
   name: string
-  description: string
+  description: string | null
   topics: string[]
   html_url: string
 }
@@ -21,12 +21,17 @@ export function ProjectsSection() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch("https://api.github.com/users/YOUR_GITHUB_USERNAME/repos?sort=updated&per_page=4")
+        const response = await fetch("https://api.github.com/users/saikothasan/repos?sort=updated&per_page=4")
         if (!response.ok) {
           throw new Error("Failed to fetch projects")
         }
-        const data = await response.json()
-        setProjects(data)
+        const data: unknown = await response.json()
+
+        if (Array.isArray(data) && data.every(isValidGitHubRepo)) {
+          setProjects(data)
+        } else {
+          console.error("Invalid data format received from GitHub API")
+        }
       } catch (error) {
         console.error("Error fetching projects:", error)
       } finally {
@@ -70,7 +75,7 @@ export function ProjectsSection() {
                   />
                   <div className="p-4">
                     <h3 className="text-lg font-semibold text-white mb-2">{project.name}</h3>
-                    <p className="text-gray-400 mb-4">{project.description}</p>
+                    <p className="text-gray-400 mb-4">{project.description || "No description available."}</p>
                     <div className="flex gap-2 flex-wrap">
                       {project.topics.map((topic, idx) => (
                         <Badge key={idx} variant="secondary" className="bg-purple-500/20 text-purple-400">
@@ -84,6 +89,19 @@ export function ProjectsSection() {
         </div>
       </div>
     </div>
+  )
+}
+
+function isValidGitHubRepo(repo: any): repo is GitHubRepo {
+  return (
+    typeof repo === "object" &&
+    repo !== null &&
+    typeof repo.id === "number" &&
+    typeof repo.name === "string" &&
+    (typeof repo.description === "string" || repo.description === null) &&
+    Array.isArray(repo.topics) &&
+    repo.topics.every((topic: unknown) => typeof topic === "string") &&
+    typeof repo.html_url === "string"
   )
 }
 
